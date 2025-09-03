@@ -1,16 +1,38 @@
-package com.smartclinic.patient;
+package com.smartclinic.repositories;
 
+import com.smartclinic.models.Patient;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 /**
- * Repository interface for Patient entity.
- * Provides CRUD operations and JPA query methods.
+ * Repository interface for managing Patient entities.
  */
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
 
-    // Vous pouvez ajouter des méthodes personnalisées si nécessaire
-    // Exemple : trouver un patient par email
-    Patient findByEmail(String email);
+    /**
+     * Find a patient by email.
+     *
+     * @param email Patient's email
+     * @return Optional containing the Patient if found
+     */
+    Optional<Patient> findByEmail(String email);
+
+    /**
+     * Check if a patient exists with the given email.
+     *
+     * @param email Patient's email
+     * @return true if exists, false otherwise
+     */
+    boolean existsByEmail(String email);
+
+    /**
+     * Find a patient by ID and return only active patients (if using an active flag).
+     *
+     * @param id Patient ID
+     * @return Optional containing the Patient
+     */
+    Optional<Patient> findByIdAndActiveTrue(Long id);
 }
