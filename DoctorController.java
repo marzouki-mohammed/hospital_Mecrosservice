@@ -1,64 +1,75 @@
-package com.smartclinic.doctor;
+package com.smartclinic.controllers;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.smartclinic.models.Doctor;
+import com.smartclinic.services.DoctorService;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
- * REST controller for managing doctors in the Smart Clinic system.
+ * REST controller for managing doctors and their availability.
  */
 @RestController
 @RequestMapping("/api/doctors")
+@RequiredArgsConstructor
 public class DoctorController {
 
-    private final DoctorRepository doctorRepository;
+    private final DoctorService doctorService;
 
-    @Autowired
-    public DoctorController(DoctorRepository doctorRepository) {
-        this.doctorRepository = doctorRepository;
-    }
+    // ------------------ CRUD Operations ------------------
 
-    // Get all doctors
     @GetMapping
-    public List<Doctor> getAllDoctors() {
-        return doctorRepository.findAll();
+    public ResponseEntity<List<Doctor>> getAllDoctors() {
+        return ResponseEntity.ok(doctorService.getAllDoctors());
     }
 
-    // Get a doctor by ID
     @GetMapping("/{id}")
     public ResponseEntity<Doctor> getDoctorById(@PathVariable Long id) {
-        return doctorRepository.findById(id)
-                .map(doctor -> ResponseEntity.ok().body(doctor))
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(doctorService.getDoctorById(id));
     }
 
-    // Create a new doctor
     @PostMapping
-    public Doctor createDoctor(@RequestBody Doctor doctor) {
-        return doctorRepository.save(doctor);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Doctor> createDoctor(@RequestBody Doctor doctor) {
+        return ResponseEntity.ok(doctorService.createDoctor(doctor));
     }
 
-    // Update an existing doctor
     @PutMapping("/{id}")
-    public ResponseEntity<Doctor> updateDoctor(@PathVariable Long id, @RequestBody Doctor doctorDetails) {
-        return doctorRepository.findById(id).map(doctor -> {
-            doctor.setFullName(doctorDetails.getFullName());
-            doctor.setSpecialty(doctorDetails.getSpecialty());
-            doctor.setPhone(doctorDetails.getPhone());
-            doctor.setEmail(doctorDetails.getEmail());
-            Doctor updatedDoctor = doctorRepository.save(doctor);
-            return ResponseEntity.ok(updatedDoctor);
-        }).orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Doctor> updateDoctor(@PathVariable Long id, @RequestBody Doctor doctor) {
+        return ResponseEntity.ok(doctorService.updateDoctor(id, doctor));
     }
 
-    // Delete a doctor
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDoctor(@PathVariable Long id) {
-        return doctorRepository.findById(id).map(doctor -> {
-            doctorRepository.delete(doctor);
-            return ResponseEntity.noContent().<Void>build();
-        }).orElse(ResponseEntity.notFound().build());
+        doctorService.deleteDoctor(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ------------------ Endpoint: Doctor Availability ------------------
+
+    /**
+     * Get available times for a doctor based on user role, doctor ID, and date.
+     * Accessible by authenticated users (Patient or Admin roles).
+     *
+     * @param doctorId ID of the doctor
+     * @param date     Date for which to retrieve availability
+     * @return List of available time slots
+     */
+    @GetMapping("/{doctorId}/availability")
+    @PreAuthorize("hasAnyRole('PATIENT','ADMIN')")
+    public ResponseEntity<List<String>> getDoctorAvailability(
+            @PathVariable Long doctorId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        List<String> availableTimes = doctorService.getAvailableTimes(doctorId, date);
+        return ResponseEntity.ok(availableTimes);
     }
 }
