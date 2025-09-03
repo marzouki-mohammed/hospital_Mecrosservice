@@ -35,4 +35,13 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
      * @return Optional containing the Patient
      */
     Optional<Patient> findByIdAndActiveTrue(Long id);
+
+    /**
+     * Find a patient by email or phone number.
+     *
+     * @param email Patient's email
+     * @param phone Patient's phone number
+     * @return Optional containing the Patient if found
+     */
+    Optional<Patient> findByEmailOrPhone(String email, String phone);
 }
