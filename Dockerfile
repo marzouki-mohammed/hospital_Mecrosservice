@@ -1,14 +1,30 @@
-# Utiliser une image officielle Java avec OpenJDK 17
-FROM openjdk:17-jdk-slim
+# ------------------ Stage 1: Build ------------------
+FROM maven:3.9.0-eclipse-temurin-17 AS build
 
-# Définir le répertoire de travail dans le conteneur
+# Set working directory
 WORKDIR /app
 
-# Copier le fichier jar compilé dans le conteneur
-COPY target/smart-clinic-0.0.1-SNAPSHOT.jar app.jar
+# Copy pom.xml and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
 
-# Exposer le port sur lequel Spring Boot écoute
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# ------------------ Stage 2: Run ------------------
+FROM eclipse-temurin:17-jdk-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy the jar from the build stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Expose the application port
 EXPOSE 8080
 
-# Commande pour lancer l'application
+# Entry point
 ENTRYPOINT ["java", "-jar", "app.jar"]
