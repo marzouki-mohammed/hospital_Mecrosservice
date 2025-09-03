@@ -32,13 +32,25 @@ public class PrescriptionController {
         return ResponseEntity.ok(prescriptionService.getPrescriptionById(id));
     }
 
-    @PostMapping("/{token}")
+    /**
+     * Create a prescription with token and user validation.
+     *
+     * @param user         The user performing the action
+     * @param token        The authentication token
+     * @param prescription Prescription object
+     * @return Saved prescription
+     */
+    @PostMapping("/{user}/{token}")
     @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
-    public ResponseEntity<Prescription> createPrescription(
+    public ResponseEntity<?> createPrescription(
+            @PathVariable String user,
             @PathVariable String token,
             @Valid @RequestBody Prescription prescription) {
 
-        // Ici, tu peux valider le token et vérifier le rôle de l'utilisateur
+        if (!prescriptionService.isValidToken(user, token)) {
+            return ResponseEntity.status(401).body("Invalid or expired token.");
+        }
+
         Prescription savedPrescription = prescriptionService.createPrescription(prescription, token);
         return ResponseEntity.ok(savedPrescription);
     }
