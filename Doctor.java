@@ -1,14 +1,13 @@
-package com.smartclinic.doctor;
+package com.smartclinic.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
+import java.util.List;
 
 /**
- * Doctor entity represents a medical doctor in the Smart Clinic system.
+ * Represents a doctor in the Smart Clinic Management System.
  */
 @Entity
-@Table(name = "doctor")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,20 +18,17 @@ public class Doctor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Full name is required")
-    @Column(nullable = false)
     private String fullName;
 
-    @NotBlank(message = "Specialty is required")
-    @Column(nullable = false)
     private String specialty;
 
-    @NotBlank(message = "Phone number is required")
-    @Column(nullable = false)
     private String phone;
 
-    @Email(message = "Email should be valid")
-    @NotBlank(message = "Email is required")
-    @Column(nullable = false, unique = true)
     private String email;
+
+    // Nouveau champ : liste des créneaux horaires disponibles
+    @ElementCollection
+    @CollectionTable(name = "doctor_available_times", joinColumns = @JoinColumn(name = "doctor_id"))
+    @Column(name = "available_time")
+    private List<String> availableTimes;
 }
