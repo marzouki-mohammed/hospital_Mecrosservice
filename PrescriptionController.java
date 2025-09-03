@@ -1,68 +1,62 @@
-package com.smartclinic.prescription;
+package com.smartclinic.controllers;
 
-import com.smartclinic.patient.Patient;
-import com.smartclinic.doctor.Doctor;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.smartclinic.models.Prescription;
+import com.smartclinic.services.PrescriptionService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 /**
- * REST controller for managing prescriptions in the Smart Clinic system.
+ * REST controller for managing prescriptions.
  */
 @RestController
 @RequestMapping("/api/prescriptions")
+@RequiredArgsConstructor
 public class PrescriptionController {
 
-    private final PrescriptionRepository prescriptionRepository;
+    private final PrescriptionService prescriptionService;
 
-    @Autowired
-    public PrescriptionController(PrescriptionRepository prescriptionRepository) {
-        this.prescriptionRepository = prescriptionRepository;
-    }
+    // ------------------ CRUD Operations ------------------
 
-    // Get all prescriptions
     @GetMapping
-    public List<Prescription> getAllPrescriptions() {
-        return prescriptionRepository.findAll();
+    public ResponseEntity<List<Prescription>> getAllPrescriptions() {
+        return ResponseEntity.ok(prescriptionService.getAllPrescriptions());
     }
 
-    // Get a prescription by ID
     @GetMapping("/{id}")
     public ResponseEntity<Prescription> getPrescriptionById(@PathVariable Long id) {
-        return prescriptionRepository.findById(id)
-                .map(prescription -> ResponseEntity.ok().body(prescription))
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(prescriptionService.getPrescriptionById(id));
     }
 
-    // Create a new prescription
-    @PostMapping
-    public Prescription createPrescription(@RequestBody Prescription prescription) {
-        return prescriptionRepository.save(prescription);
+    @PostMapping("/{token}")
+    @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
+    public ResponseEntity<Prescription> createPrescription(
+            @PathVariable String token,
+            @Valid @RequestBody Prescription prescription) {
+
+        // Ici, tu peux valider le token et vérifier le rôle de l'utilisateur
+        Prescription savedPrescription = prescriptionService.createPrescription(prescription, token);
+        return ResponseEntity.ok(savedPrescription);
     }
 
-    // Update an existing prescription
     @PutMapping("/{id}")
-    public ResponseEntity<Prescription> updatePrescription(@PathVariable Long id,
-                                                           @RequestBody Prescription prescriptionDetails) {
-        return prescriptionRepository.findById(id).map(prescription -> {
-            prescription.setDoctor(prescriptionDetails.getDoctor());
-            prescription.setPatient(prescriptionDetails.getPatient());
-            prescription.setMedication(prescriptionDetails.getMedication());
-            prescription.setDosage(prescriptionDetails.getDosage());
-            prescription.setInstructions(prescriptionDetails.getInstructions());
-            Prescription updatedPrescription = prescriptionRepository.save(prescription);
-            return ResponseEntity.ok(updatedPrescription);
-        }).orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasAnyRole('DOCTOR','ADMIN')")
+    public ResponseEntity<Prescription> updatePrescription(
+            @PathVariable Long id,
+            @Valid @RequestBody Prescription prescription) {
+
+        Prescription updatedPrescription = prescriptionService.updatePrescription(id, prescription);
+        return ResponseEntity.ok(updatedPrescription);
     }
 
-    // Delete a prescription
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deletePrescription(@PathVariable Long id) {
-        return prescriptionRepository.findById(id).map(prescription -> {
-            prescriptionRepository.delete(prescription);
-            return ResponseEntity.noContent().<Void>build();
-        }).orElse(ResponseEntity.notFound().build());
+        prescriptionService.deletePrescription(id);
+        return ResponseEntity.noContent().build();
     }
 }
