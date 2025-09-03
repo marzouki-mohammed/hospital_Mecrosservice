@@ -1,55 +1,87 @@
-package com.smartclinic.doctor;
+package com.smartclinic.services;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.smartclinic.models.Appointment;
+import com.smartclinic.models.Doctor;
+import com.smartclinic.repositories.AppointmentRepository;
+import com.smartclinic.repositories.DoctorRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Service layer for managing doctors in the Smart Clinic system.
+ * Service for managing doctors in the Smart Clinic Management System.
  */
 @Service
+@RequiredArgsConstructor
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    public DoctorService(DoctorRepository doctorRepository) {
-        this.doctorRepository = doctorRepository;
+    // ------------------ CRUD Operations ------------------
+
+    public Doctor createDoctor(Doctor doctor) {
+        doctor.setPassword(passwordEncoder.encode(doctor.getPassword()));
+        return doctorRepository.save(doctor);
     }
 
-    // Get all doctors
-    public List<Doctor> getAllDoctors() {
-        return doctorRepository.findAll();
+    public Doctor updateDoctor(Doctor doctor) {
+        return doctorRepository.save(doctor);
     }
 
-    // Get a doctor by ID
+    public void deleteDoctor(Long id) {
+        doctorRepository.deleteById(id);
+    }
+
     public Optional<Doctor> getDoctorById(Long id) {
         return doctorRepository.findById(id);
     }
 
-    // Create a new doctor
-    public Doctor createDoctor(Doctor doctor) {
-        return doctorRepository.save(doctor);
+    public List<Doctor> getAllDoctors() {
+        return doctorRepository.findAll();
     }
 
-    // Update an existing doctor
-    public Optional<Doctor> updateDoctor(Long id, Doctor doctorDetails) {
-        return doctorRepository.findById(id).map(doctor -> {
-            doctor.setFullName(doctorDetails.getFullName());
-            doctor.setSpecialty(doctorDetails.getSpecialty());
-            doctor.setPhone(doctorDetails.getPhone());
-            doctor.setEmail(doctorDetails.getEmail());
-            return doctorRepository.save(doctor);
-        });
+    // ------------------ New Method: Validate login ------------------
+
+    public boolean validateLogin(String email, String rawPassword) {
+        Optional<Doctor> doctorOpt = doctorRepository.findByEmail(email);
+        return doctorOpt.map(doctor -> passwordEncoder.matches(rawPassword, doctor.getPassword())).orElse(false);
     }
 
-    // Delete a doctor
-    public boolean deleteDoctor(Long id) {
-        return doctorRepository.findById(id).map(doctor -> {
-            doctorRepository.delete(doctor);
-            return true;
-        }).orElse(false);
+    // ------------------ New Method: Get available time slots ------------------
+
+    public List<LocalTime> getAvailableTimeSlots(Long doctorId, LocalDate date) {
+        Optional<Doctor> doctorOpt = doctorRepository.findById(doctorId);
+        if (doctorOpt.isEmpty()) return new ArrayList<>();
+
+        Doctor doctor = doctorOpt.get();
+
+        // Exemple : horaires fixes de 9h à 17h, toutes les 30 minutes
+        List<LocalTime> allSlots = new ArrayList<>();
+        LocalTime start = LocalTime.of(9, 0);
+        LocalTime end = LocalTime.of(17, 0);
+        while (!start.isAfter(end.minusMinutes(30))) {
+            allSlots.add(start);
+            start = start.plusMinutes(30);
+        }
+
+        // Retirer les créneaux déjà pris
+        List<Appointment> appointments = appointmentRepository.findByDoctorAndStartAtBetween(
+                doctor,
+                date.atStartOfDay(),
+                date.atTime(23, 59, 59)
+        );
+
+        appointments.forEach(app -> allSlots.remove(app.getStartAt().toLocalTime()));
+
+        return allSlots;
     }
 }
