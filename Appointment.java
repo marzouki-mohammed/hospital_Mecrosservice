@@ -1,17 +1,15 @@
-package com.smartclinic.appointment;
+package com.smartclinic.models;
 
-import com.smartclinic.doctor.Doctor;
-import com.smartclinic.patient.Patient;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * Appointment entity represents a scheduled appointment between a doctor and a patient.
+ * Represents an appointment between a doctor and a patient.
  */
 @Entity
-@Table(name = "appointment")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,22 +22,29 @@ public class Appointment {
 
     @ManyToOne
     @JoinColumn(name = "doctor_id", nullable = false)
-    @NotNull(message = "Doctor is required")
+    @NotNull(message = "Doctor must be specified")
     private Doctor doctor;
 
     @ManyToOne
     @JoinColumn(name = "patient_id", nullable = false)
-    @NotNull(message = "Patient is required")
+    @NotNull(message = "Patient must be specified")
     private Patient patient;
 
-    @NotNull(message = "Start time is required")
-    @Column(nullable = false)
+    @NotNull(message = "Start time must be specified")
+    @Future(message = "Start time must be in the future")
     private LocalDateTime startAt;
 
-    @NotNull(message = "End time is required")
-    @Column(nullable = false)
+    @NotNull(message = "End time must be specified")
+    @Future(message = "End time must be in the future")
     private LocalDateTime endAt;
 
-    @Column(nullable = false)
-    private String status; // e.g., SCHEDULED, COMPLETED, CANCELED
+    @Enumerated(EnumType.STRING)
+    private AppointmentStatus status;
+
+    // Enum pour le statut du rendez-vous
+    public enum AppointmentStatus {
+        SCHEDULED,
+        COMPLETED,
+        CANCELED
+    }
 }
